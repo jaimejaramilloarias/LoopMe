@@ -1,0 +1,4 @@
+LoopMe - Jaime Jaramillo Arias - 2025
+
+App para administrar loops de audio, que permita cargar un audio, visualizar su onda, arrastra marcadores para marcar un loop, reproducir el loop de manera ininterrumpida, modificar el tempo sin cambiar el pitch, cambiar el pitch sin modificar el tempo.
+Con una UI preparada para añadirle diseño profesional.
