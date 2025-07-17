@@ -22,6 +22,8 @@ let zoomLevel = 100;
 let transientPoints = [];
 // Umbral en segundos para "magnetizar" los límites del loop
 const snapThreshold = 0.05; // 50ms
+// Compensación para ajustar el desfase de procesado de SoundTouch
+const LATENCY_COMPENSATION = 0.1; // 100ms
 
 let hasInteracted = false;
 
@@ -223,17 +225,27 @@ async function createSoundTouchFilter(startTime = 0, endTime = null) {
   for (let i = 0; i < buffer.numberOfChannels; i++) {
     channels.push(buffer.getChannelData(i).slice());
   }
+  const offset = Math.round(LATENCY_COMPENSATION * buffer.sampleRate);
+  const startFrame = Math.max(0, Math.floor(startTime * buffer.sampleRate) - offset);
+  const loopStartFrame = looping && currentRegion
+    ? Math.max(0, Math.floor(currentRegion.start * buffer.sampleRate) - offset)
+    : 0;
+  let loopEndFrame = endTime !== null
+    ? Math.floor((endTime + LATENCY_COMPENSATION) * buffer.sampleRate)
+    : buffer.length;
+  loopEndFrame = Math.min(loopEndFrame, buffer.length);
+
   node.port.postMessage({
     type: 'init',
     channels,
     tempo: tempoControl.value / 100,
     pitch: Math.pow(2, pitchControl.value / 12),
-    position: Math.floor(startTime * buffer.sampleRate),
-    loopStart: looping && currentRegion ? Math.floor(currentRegion.start * buffer.sampleRate) : 0,
-    loopEnd: endTime !== null ? Math.floor(endTime * buffer.sampleRate) : buffer.length
+    position: startFrame,
+    loopStart: loopStartFrame,
+    loopEnd: loopEndFrame
   });
   filterNode = node;
-  currentSourcePosition = Math.floor(startTime * buffer.sampleRate);
+  currentSourcePosition = startFrame;
   wavesurfer.backend.setFilter(filterNode);
 }
 
