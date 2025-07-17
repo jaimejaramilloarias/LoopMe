@@ -4,8 +4,18 @@ Aplicación web sencilla para crear loops de audio. Permite cargar archivos de a
 
 ## Uso
 
-1. Abrir `index.html` en un navegador moderno.
-2. Cargar un archivo de audio con el selector "Choose file".
-3. Ajustar los marcadores para definir el loop y usar los controles de tempo y pitch según se necesite.
+1. Inicia un servidor estático en la carpeta del proyecto. Por ejemplo, con
+   Python se puede ejecutar:
+
+   ```bash
+   python3 -m http.server
+   ```
+
+   Esto servirá los archivos en `http://localhost:8000/`.
+
+2. Abre `http://localhost:8000/index.html` en un navegador moderno.
+3. Carga un archivo de audio con el selector "Choose file".
+4. Ajusta los marcadores para definir el loop y usa los controles de tempo y
+   pitch según sea necesario.
 
 El proyecto está pensado como base para un diseño de interfaz más elaborado.
