@@ -18,18 +18,21 @@
         <div id="waveform"></div>
         <div id="controls">
             <button id="play-btn">Play/Pause</button>
+            <button id="stop-btn">Stop</button>
+            <button id="prev-marker">&laquo;</button>
+            <button id="next-marker">&raquo;</button>
             <button id="loop-btn"></button>
             <div class="control-group">
-                <label for="tempo">Tempo</label>
-                <input type="range" id="tempo" min="50" max="150" value="100">
+                <label for="tempo">Tempo <span id="tempo-val">100%</span></label>
+                <input type="range" id="tempo" class="knob" min="50" max="150" value="100">
             </div>
             <div class="control-group">
-                <label for="pitch">Pitch</label>
-                <input type="range" id="pitch" min="-12" max="12" value="0">
+                <label for="pitch">Pitch <span id="pitch-val">0 st</span></label>
+                <input type="range" id="pitch" class="knob" min="-12" max="12" value="0">
             </div>
             <div class="control-group">
                 <label for="zoom">Zoom</label>
-                <input type="range" id="zoom" min="20" max="200" value="100">
+                <input type="range" id="zoom" class="knob" min="20" max="200" value="100">
                 <div>
                     <button id="zoom-in">+</button>
                     <button id="zoom-out">-</button>

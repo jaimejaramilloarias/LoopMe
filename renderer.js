@@ -85,12 +85,10 @@ function detectTransients(buffer) {
   for (let i = 1; i < rms.length; i++) {
     diff.push(Math.max(0, rms[i] - rms[i - 1]));
   }
-  const maxDiff = Math.max(...diff);
-  const threshold = maxDiff * 0.3;
   const times = [];
   const searchRadius = 2; // frames around the transient to find the real peak
   for (let i = 1; i < diff.length - 1; i++) {
-    if (diff[i] > threshold && diff[i] > diff[i - 1] && diff[i] >= diff[i + 1]) {
+    if (diff[i] >= diff[i - 1] && diff[i] >= diff[i + 1]) {
       let peakIndex = i;
       let peakValue = rms[i];
       // Busca el valor máximo de RMS cercano para ubicar el snap exactamente en el ataque audible
@@ -153,6 +151,41 @@ playBtn.addEventListener('click', async () => {
   }
 });
 
+// Stop playback
+const stopBtn = document.getElementById('stop-btn');
+stopBtn.addEventListener('click', () => {
+  wavesurfer.stop();
+  wavesurfer.backend.setFilter();
+  stopSync();
+});
+
+// Skip to next/previous marker
+const nextMarkerBtn = document.getElementById('next-marker');
+const prevMarkerBtn = document.getElementById('prev-marker');
+
+function seekToMarker(direction) {
+  if (!transientPoints.length) return;
+  const current = wavesurfer.getCurrentTime();
+  if (direction > 0) {
+    for (let i = 0; i < transientPoints.length; i++) {
+      if (transientPoints[i] > current + 0.01) {
+        wavesurfer.seekTo(transientPoints[i] / wavesurfer.getDuration());
+        return;
+      }
+    }
+  } else {
+    for (let i = transientPoints.length - 1; i >= 0; i--) {
+      if (transientPoints[i] < current - 0.01) {
+        wavesurfer.seekTo(transientPoints[i] / wavesurfer.getDuration());
+        return;
+      }
+    }
+  }
+}
+
+nextMarkerBtn.addEventListener('click', () => seekToMarker(1));
+prevMarkerBtn.addEventListener('click', () => seekToMarker(-1));
+
 // Toggle looping region
 const loopBtn = document.getElementById('loop-btn');
 loopBtn.textContent = 'Loop Off';
@@ -166,6 +199,7 @@ loopBtn.addEventListener('click', () => {
 
 // Playback rate control (tempo without pitch change)
 const tempoControl = document.getElementById('tempo');
+const tempoValue = document.getElementById('tempo-val');
 // Control parameters passed to the AudioWorkletProcessor
 
 tempoControl.addEventListener('input', () => {
@@ -173,10 +207,12 @@ tempoControl.addEventListener('input', () => {
   if (filterNode) {
     filterNode.port.postMessage({ type: 'params', tempo: rate });
   }
+  updateTempoDisplay();
 });
 
 // Pitch control using soundtouch
 const pitchControl = document.getElementById('pitch');
+const pitchValue = document.getElementById('pitch-val');
 pitchControl.addEventListener('input', () => {
   const semitones = Number(pitchControl.value);
   if (filterNode) {
@@ -185,12 +221,40 @@ pitchControl.addEventListener('input', () => {
       pitch: Math.pow(2, semitones / 12)
     });
   }
+  updatePitchDisplay();
 });
 
 // Zoom control slider y botones de zoom in/out
 const zoomControl = document.getElementById('zoom');
 const zoomInBtn = document.getElementById('zoom-in');
 const zoomOutBtn = document.getElementById('zoom-out');
+
+// Initialize knob displays
+updateTempoDisplay();
+updatePitchDisplay();
+updateZoomDisplay();
+
+function updateKnob(element) {
+  const min = Number(element.min);
+  const max = Number(element.max);
+  const val = Number(element.value);
+  const pct = (val - min) / (max - min);
+  element.style.setProperty('--percentage', pct);
+}
+
+function updateTempoDisplay() {
+  tempoValue.textContent = `${tempoControl.value}%`;
+  updateKnob(tempoControl);
+}
+
+function updatePitchDisplay() {
+  pitchValue.textContent = `${pitchControl.value} st`;
+  updateKnob(pitchControl);
+}
+
+function updateZoomDisplay() {
+  updateKnob(zoomControl);
+}
 
 // Cambia el nivel de zoom aplicando .zoom(pxPerSec)
 function applyZoom(value) {
@@ -201,18 +265,21 @@ function applyZoom(value) {
 
 zoomControl.addEventListener('input', () => {
   applyZoom(Number(zoomControl.value));
+  updateZoomDisplay();
 });
 
 zoomInBtn.addEventListener('click', () => {
   const step = 20;
   const max = Number(zoomControl.max);
   applyZoom(Math.min(zoomLevel + step, max));
+  updateZoomDisplay();
 });
 
 zoomOutBtn.addEventListener('click', () => {
   const step = 20;
   const min = Number(zoomControl.min);
   applyZoom(Math.max(zoomLevel - step, min));
+  updateZoomDisplay();
 });
 
 async function createSoundTouchFilter(startTime = 0, endTime = null) {

@@ -59,3 +59,30 @@ input[type=range] {
   margin-top: 0.5rem;
 }
 
+/* Simple knob style for range inputs */
+input.knob {
+  appearance: none;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #333;
+  position: relative;
+}
+input.knob::-webkit-slider-thumb,
+input.knob::-moz-range-thumb {
+  appearance: none;
+  width: 0;
+  height: 0;
+}
+input.knob::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 4px;
+  height: 25px;
+  background: #ffbf00;
+  transform-origin: bottom center;
+  transform: rotate(calc(-135deg + var(--percentage, 0) * 270deg));
+}
+
