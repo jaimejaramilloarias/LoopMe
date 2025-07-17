@@ -6,7 +6,8 @@ let wavesurfer = WaveSurfer.create({
   waveColor: '#a0a0a0',
   progressColor: '#333',
   plugins: [
-    WaveSurfer.regions.create({})
+    WaveSurfer.regions.create({}),
+    WaveSurfer.markers.create({})
   ]
 });
 
@@ -18,6 +19,11 @@ let workletLoaded = false;
 let currentSourcePosition = 0;
 // Nivel de zoom en px por segundo aplicado a la onda
 let zoomLevel = 100;
+
+// Lista de tiempos de ataque detectados en el audio
+let transientPoints = [];
+// Umbral en segundos para "magnetizar" los límites del loop
+const snapThreshold = 0.05; // 50ms
 
 let hasInteracted = false;
 
@@ -48,6 +54,52 @@ async function ensureWorklet(context) {
     }
   }
   return true;
+}
+
+// Analiza el buffer de audio para detectar transientes.
+// Devuelve un arreglo de tiempos (en segundos) donde se han encontrado ataques.
+function detectTransients(buffer) {
+  const data = buffer.getChannelData(0);
+  const sampleRate = buffer.sampleRate;
+  const frameSize = 1024;
+  const hopSize = 512;
+  const rms = [];
+  for (let i = 0; i < data.length; i += hopSize) {
+    let sum = 0;
+    for (let j = 0; j < frameSize && i + j < data.length; j++) {
+      const val = data[i + j];
+      sum += val * val;
+    }
+    rms.push(Math.sqrt(sum / frameSize));
+  }
+  const diff = [];
+  for (let i = 1; i < rms.length; i++) {
+    diff.push(Math.max(0, rms[i] - rms[i - 1]));
+  }
+  const maxDiff = Math.max(...diff);
+  const threshold = maxDiff * 0.3;
+  const times = [];
+  for (let i = 1; i < diff.length - 1; i++) {
+    if (diff[i] > threshold && diff[i] > diff[i - 1] && diff[i] >= diff[i + 1]) {
+      times.push((i * hopSize) / sampleRate);
+    }
+  }
+  return times;
+}
+
+// Devuelve el tiempo de transiente más cercano si está dentro del umbral
+function snapToTransient(time) {
+  if (!transientPoints.length) return time;
+  let nearest = transientPoints[0];
+  let minDiff = Math.abs(time - nearest);
+  for (let i = 1; i < transientPoints.length; i++) {
+    const diff = Math.abs(time - transientPoints[i]);
+    if (diff < minDiff) {
+      minDiff = diff;
+      nearest = transientPoints[i];
+    }
+  }
+  return minDiff <= snapThreshold ? nearest : time;
 }
 
 // ensure the AudioContext resumes on the first user interaction
@@ -172,6 +224,14 @@ wavesurfer.on('ready', async () => {
   // Create filter chain when audio is decoded
   await createSoundTouchFilter(0);
 
+  // Detect transients and mostrar marcas
+  const buffer = wavesurfer.backend.buffer;
+  transientPoints = detectTransients(buffer);
+  wavesurfer.clearMarkers();
+  transientPoints.forEach((t) => {
+    wavesurfer.addMarker({ time: t, color: '#f00' });
+  });
+
   // Clear previous region
   wavesurfer.clearRegions();
   const duration = wavesurfer.getDuration();
@@ -234,4 +294,11 @@ wavesurfer.on('play', () => {
 wavesurfer.on('pause', () => {
   wavesurfer.backend.setFilter();
   stopSync();
+});
+
+// Ajuste magnético de los límites del loop al terminar de mover una región
+wavesurfer.on('region-update-end', (region) => {
+  const start = snapToTransient(region.start);
+  const end = snapToTransient(region.end);
+  region.update({ start, end });
 });
