@@ -86,9 +86,20 @@ function detectTransients(buffer) {
   const maxDiff = Math.max(...diff);
   const threshold = maxDiff * 0.3;
   const times = [];
+  const searchRadius = 2; // frames around the transient to find the real peak
   for (let i = 1; i < diff.length - 1; i++) {
     if (diff[i] > threshold && diff[i] > diff[i - 1] && diff[i] >= diff[i + 1]) {
-      times.push((i * hopSize) / sampleRate);
+      let peakIndex = i;
+      let peakValue = rms[i];
+      // Busca el valor máximo de RMS cercano para ubicar el snap exactamente en el ataque audible
+      for (let j = -searchRadius; j <= searchRadius; j++) {
+        const idx = i + j;
+        if (idx >= 0 && idx < rms.length && rms[idx] > peakValue) {
+          peakValue = rms[idx];
+          peakIndex = idx;
+        }
+      }
+      times.push((peakIndex * hopSize) / sampleRate);
     }
   }
   return times;
@@ -176,8 +187,10 @@ pitchControl.addEventListener('input', () => {
 const zoomControl = document.getElementById('zoom');
 const zoomInBtn = document.getElementById('zoom-in');
 const zoomOutBtn = document.getElementById('zoom-out');
-// Input para la compensación de loop en ms (se puede eliminar junto con las
-// referencias si se quiere dejar un valor fijo)
+// --- Ajuste temporal del reinicio del loop ------------------------------
+// Input para la compensación de loop en ms.
+// Esta UI es experimental y puede eliminarse junto con las referencias a
+// loopOffsetMs si se desea fijar un valor constante.
 const loopOffsetInput = document.getElementById('loop-offset');
 
 loopOffsetInput.addEventListener('input', () => {
@@ -276,15 +289,16 @@ function startSync() {
   const baseLatency = context.baseLatency || 0;
   const latencyTime = PROCESS_LATENCY_SAMPLES / sampleRate + baseLatency;
   const duration = wavesurfer.getDuration();
-  const offsetTime = loopOffsetMs / 1000; // compensación en segundos
-
   loopHandler = async (time) => {
     let current = filterNode ? currentSourcePosition / sampleRate : time;
+    // Leer la compensación en cada iteración para aplicar cambios en tiempo real
+    // Esta lógica puede eliminarse si se descarta la UI de compensación
+    const offsetTime = loopOffsetMs / 1000;
 
     if (looping && currentRegion) {
       const { start, end } = currentRegion;
       // Reiniciar cerca del final del loop sumando la compensación
-      // (ajustar o eliminar este bloque si se desea fijar el valor)
+      // (esta sección es parte de la UI experimental de ajuste de loop)
       if (current >= end + offsetTime - latencyTime) {
         await createSoundTouchFilter(start);
         wavesurfer.seekTo(start / duration); // sincroniza la vista
