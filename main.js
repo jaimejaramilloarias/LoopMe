@@ -1,7 +1,6 @@
 // Migrated to AudioWorkletNode for SoundTouch processing
 // Basic LoopMe logic using Wavesurfer.js and SoundTouch library
-// Nota: SoundTouch aún utiliza ScriptProcessorNode, que está deprecado en
-// navegadores modernos. En un futuro se debería migrar a AudioWorkletNode.
+// Procesamiento de audio a traves de AudioWorklet para tempo y pitch
 let wavesurfer = WaveSurfer.create({
   container: '#waveform',
   waveColor: '#a0a0a0',
@@ -18,6 +17,12 @@ let loopRAF = null;
 let workletLoaded = false;
 let currentSourcePosition = 0;
 
+let hasInteracted = false;
+
+function handleInteraction() {
+  hasInteracted = true;
+  resumeContext();
+}
 function resumeContext() {
   const ctx = wavesurfer.backend.getAudioContext();
   if (ctx.state === 'suspended') {
@@ -26,23 +31,34 @@ function resumeContext() {
 }
 
 async function ensureWorklet(context) {
-  if (!workletLoaded) {
-    await context.audioWorklet.addModule('soundtouch-processor.js');
-    workletLoaded = true;
+  if (!context || !context.audioWorklet) {
+    alert("AudioWorklet no soportado en este navegador.");
+    return false;
   }
+  if (!workletLoaded) {
+    try {
+      await context.audioWorklet.addModule("soundtouch-processor.js");
+      workletLoaded = true;
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo cargar el procesador de audio.");
+      return false;
+    }
+  }
+  return true;
 }
 
 // ensure the AudioContext resumes on the first user interaction
-document.addEventListener('click', resumeContext, { once: true });
-document.addEventListener('keydown', resumeContext, { once: true });
-document.addEventListener('touchstart', resumeContext, { once: true });
+document.addEventListener("click", handleInteraction, { once: true });
+document.addEventListener("keydown", handleInteraction, { once: true });
+document.addEventListener("touchstart", handleInteraction, { once: true });
 
 // Load local file
 const fileInput = document.getElementById('audio-upload');
 fileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (file) {
-    resumeContext();
+    handleInteraction();
     const url = URL.createObjectURL(file);
     wavesurfer.load(url);
     wavesurfer.once('decode', () => URL.revokeObjectURL(url));
@@ -52,7 +68,7 @@ fileInput.addEventListener('change', (e) => {
 // Play/pause
 const playBtn = document.getElementById('play-btn');
 playBtn.addEventListener('click', async () => {
-  resumeContext();
+  handleInteraction();
   if (wavesurfer.isPlaying()) {
     wavesurfer.pause();
   } else {
@@ -97,7 +113,8 @@ pitchControl.addEventListener('input', () => {
 
 async function createSoundTouchFilter(startTime = 0) {
   const context = wavesurfer.backend.getAudioContext();
-  await ensureWorklet(context);
+  const ok = await ensureWorklet(context);
+  if (!ok) return;
   const buffer = wavesurfer.backend.buffer;
   const node = new AudioWorkletNode(context, 'soundtouch-processor');
   node.port.onmessage = (e) => {
