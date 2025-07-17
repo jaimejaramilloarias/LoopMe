@@ -18,11 +18,6 @@ let workletLoaded = false;
 let currentSourcePosition = 0;
 // Nivel de zoom en px por segundo aplicado a la onda
 let zoomLevel = 100;
-// Compensación del loop en segundos para el reinicio (ajustable)
-let compensacionLoop = 0.1; // editar para ajustar el retraso
-
-let pendingSeek = false; // evita múltiples saltos consecutivos
-
 // Lista de tiempos de ataque detectados en el audio
 let transientPoints = [];
 // Umbral en segundos para "magnetizar" los límites del loop
@@ -144,7 +139,9 @@ playBtn.addEventListener('click', async () => {
   if (wavesurfer.isPlaying()) {
     wavesurfer.pause();
   } else {
-    await createSoundTouchFilter(wavesurfer.getCurrentTime());
+    const start = wavesurfer.getCurrentTime();
+    const end = looping && currentRegion ? currentRegion.end : null;
+    await createSoundTouchFilter(start, end);
     wavesurfer.play();
   }
 });
@@ -211,7 +208,7 @@ zoomOutBtn.addEventListener('click', () => {
   applyZoom(Math.max(zoomLevel - step, min));
 });
 
-async function createSoundTouchFilter(startTime = 0) {
+async function createSoundTouchFilter(startTime = 0, endTime = null) {
   const context = wavesurfer.backend.getAudioContext();
   const ok = await ensureWorklet(context);
   if (!ok) return;
@@ -231,16 +228,20 @@ async function createSoundTouchFilter(startTime = 0) {
     channels,
     tempo: tempoControl.value / 100,
     pitch: Math.pow(2, pitchControl.value / 12),
-    startPosition: Math.floor(startTime * buffer.sampleRate)
+    position: Math.floor(startTime * buffer.sampleRate),
+    loopStart: looping && currentRegion ? Math.floor(currentRegion.start * buffer.sampleRate) : 0,
+    loopEnd: endTime !== null ? Math.floor(endTime * buffer.sampleRate) : buffer.length
   });
   filterNode = node;
+  currentSourcePosition = Math.floor(startTime * buffer.sampleRate);
   wavesurfer.backend.setFilter(filterNode);
 }
 
 // Region creation for loop
 wavesurfer.on('ready', async () => {
   // Create filter chain when audio is decoded
-  await createSoundTouchFilter(0);
+  const duration = wavesurfer.getDuration();
+  await createSoundTouchFilter(0, duration);
 
   // Detect transients and mostrar marcas
   const buffer = wavesurfer.backend.buffer;
@@ -252,7 +253,6 @@ wavesurfer.on('ready', async () => {
 
   // Clear previous region
   wavesurfer.clearRegions();
-  const duration = wavesurfer.getDuration();
   // Activar loop en toda la duración del audio por defecto
   looping = true;
   loopBtn.textContent = 'Loop On';
@@ -274,30 +274,12 @@ let loopHandler = null; // reference to the current audioprocess callback
 
 function startSync() {
   stopSync();
-  const context = wavesurfer.backend.getAudioContext();
-  const buffer = wavesurfer.backend.buffer;
-  const sampleRate = buffer.sampleRate;
+  const sampleRate = wavesurfer.backend.buffer.sampleRate;
   const duration = wavesurfer.getDuration();
-  loopHandler = async (time) => {
-    let current = filterNode ? currentSourcePosition / sampleRate : time;
-    if (looping && currentRegion) {
-      const { start, end } = currentRegion;
-        if (!pendingSeek && current >= end + compensacionLoop) {
-          pendingSeek = true;
-          await createSoundTouchFilter(start);
-          wavesurfer.seekTo(start / duration);
-          wavesurfer.pause(); // flush
-          setTimeout(() => {
-            wavesurfer.play();
-            pendingSeek = false;
-          }, 10);
-          console.log(`Loop jump at ${current.toFixed(3)}s using compensacionLoop=${compensacionLoop}s`);
-        }
-    }
-
+  loopHandler = (time) => {
+    const current = filterNode ? currentSourcePosition / sampleRate : time;
     wavesurfer.drawer.progress(current / duration);
   };
-
   wavesurfer.on('audioprocess', loopHandler);
 }
 
@@ -322,8 +304,11 @@ wavesurfer.on('pause', () => {
 });
 
 // Ajuste magnético de los límites del loop al terminar de mover una región
-wavesurfer.on('region-update-end', (region) => {
+wavesurfer.on('region-update-end', async (region) => {
   const start = snapToTransient(region.start);
   const end = snapToTransient(region.end);
   region.update({ start, end });
+  if (filterNode) {
+    await createSoundTouchFilter(wavesurfer.getCurrentTime(), looping ? end : null);
+  }
 });
