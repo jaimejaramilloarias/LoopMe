@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoopMe</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Wavesurfer.js from CDN -->
+    <script src="https://unpkg.com/wavesurfer.js@7"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+</head>
+<body>
+    <h1>LoopMe</h1>
+    <input type="file" id="audio-upload" accept="audio/*">
+    <div id="waveform"></div>
+    <div id="controls">
+        <button id="play-btn">Play/Pause</button>
+        <button id="loop-btn">Toggle Loop</button>
+        <label>Tempo
+            <input type="range" id="tempo" min="50" max="150" value="100">
+        </label>
+        <label>Pitch
+            <input type="range" id="pitch" min="-12" max="12" value="0">
+        </label>
+    </div>
+    <script type="module" src="soundtouch.js"></script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
