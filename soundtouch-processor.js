@@ -66,8 +66,13 @@ class SoundTouchProcessor extends AudioWorkletProcessor {
       this.filter.sourcePosition = position;
       this.filter.position = 0;
     } else if (data.type === 'params' && this.filter) {
-      if (typeof data.tempo === 'number') this.filter._pipe.tempo = data.tempo;
-      if (typeof data.pitch === 'number') this.filter._pipe.pitch = data.pitch;
+      const params = {};
+      if (typeof data.tempo === 'number') params.tempo = data.tempo;
+      if (typeof data.pitch === 'number') params.pitch = data.pitch;
+      if (Object.keys(params).length) {
+        this.filter._pipe.updateParams(params);
+        console.log('SoundTouchProcessor params updated', params);
+      }
     }
   }
 
