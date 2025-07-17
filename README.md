@@ -18,4 +18,8 @@ Aplicación web sencilla para crear loops de audio. Permite cargar archivos de a
 4. Ajusta los marcadores para definir el loop y usa los controles de tempo y
    pitch según sea necesario.
 
+Si el navegador muestra un mensaje indicando que el `AudioContext` no se pudo
+iniciar, basta con hacer clic o tocar cualquier parte de la página para activar
+el sonido.
+
 El proyecto está pensado como base para un diseño de interfaz más elaborado.
