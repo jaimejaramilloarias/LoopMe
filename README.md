@@ -23,3 +23,20 @@ iniciar, basta con hacer clic o tocar cualquier parte de la página para activar
 el sonido.
 
 El proyecto está pensado como base para un diseño de interfaz más elaborado.
+
+## Uso en escritorio (Electron)
+
+1. Instala las dependencias:
+   ```bash
+   npm install
+   ```
+2. Ejecuta la aplicación:
+   ```bash
+   npm start
+   ```
+   o bien
+   ```bash
+   npx electron .
+   ```
+
+La ventana de la aplicación cargará `index.html` y funcionará igual que en el navegador Chrome, incluyendo soporte para AudioWorklet.
