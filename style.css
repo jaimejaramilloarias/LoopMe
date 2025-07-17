@@ -34,6 +34,12 @@ body {
   margin-top: 1rem;
 }
 
+#knobs {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
 button {
   background: #ffbf00;
   border: none;
