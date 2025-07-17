@@ -1,4 +1,4 @@
-import { SoundTouch, SimpleFilter, WebAudioBufferSource, getWebAudioNode } from "./soundtouch.js";
+// Migrated to AudioWorkletNode for SoundTouch processing
 // Basic LoopMe logic using Wavesurfer.js and SoundTouch library
 // Nota: SoundTouch aún utiliza ScriptProcessorNode, que está deprecado en
 // navegadores modernos. En un futuro se debería migrar a AudioWorkletNode.
@@ -15,11 +15,20 @@ let currentRegion = null;
 let looping = false;
 let filterNode = null;
 let loopRAF = null;
+let workletLoaded = false;
+let currentSourcePosition = 0;
 
 function resumeContext() {
   const ctx = wavesurfer.backend.getAudioContext();
   if (ctx.state === 'suspended') {
     ctx.resume();
+  }
+}
+
+async function ensureWorklet(context) {
+  if (!workletLoaded) {
+    await context.audioWorklet.addModule('soundtouch-processor.js');
+    workletLoaded = true;
   }
 }
 
@@ -42,12 +51,12 @@ fileInput.addEventListener('change', (e) => {
 
 // Play/pause
 const playBtn = document.getElementById('play-btn');
-playBtn.addEventListener('click', () => {
+playBtn.addEventListener('click', async () => {
   resumeContext();
   if (wavesurfer.isPlaying()) {
     wavesurfer.pause();
   } else {
-    createSoundTouchFilter(wavesurfer.getCurrentTime());
+    await createSoundTouchFilter(wavesurfer.getCurrentTime());
     wavesurfer.play();
   }
 });
@@ -65,45 +74,56 @@ loopBtn.addEventListener('click', () => {
 
 // Playback rate control (tempo without pitch change)
 const tempoControl = document.getElementById('tempo');
-// We'll use SoundTouch to stretch tempo while preserving pitch
-let source = null;
-let soundtouch = null;
-let tempoProcessor = null;
+// Control parameters passed to the AudioWorkletProcessor
 
 tempoControl.addEventListener('input', () => {
   const rate = tempoControl.value / 100;
-  if (!source) return;
-  soundtouch.tempo = rate;
+  if (filterNode) {
+    filterNode.port.postMessage({ type: 'params', tempo: rate });
+  }
 });
 
 // Pitch control using soundtouch
 const pitchControl = document.getElementById('pitch');
 pitchControl.addEventListener('input', () => {
-  if (!source) return;
   const semitones = Number(pitchControl.value);
-  soundtouch.pitch = Math.pow(2, semitones / 12);
+  if (filterNode) {
+    filterNode.port.postMessage({
+      type: 'params',
+      pitch: Math.pow(2, semitones / 12)
+    });
+  }
 });
 
-function createSoundTouchFilter(startTime = 0) {
+async function createSoundTouchFilter(startTime = 0) {
   const context = wavesurfer.backend.getAudioContext();
+  await ensureWorklet(context);
   const buffer = wavesurfer.backend.buffer;
-  source = new WebAudioBufferSource(buffer);
-  soundtouch = new SoundTouch(context.sampleRate);
-  soundtouch.tempo = tempoControl.value / 100;
-  soundtouch.pitch = Math.pow(2, pitchControl.value / 12);
-  tempoProcessor = new SimpleFilter(source, soundtouch);
-  // posicionar con precisión el inicio del buffer y reiniciar historial
-  tempoProcessor.sourcePosition = Math.floor(startTime * buffer.sampleRate);
-  tempoProcessor.position = 0;
-  // Recreate ScriptProcessorNode every cycle for a clean state
-  filterNode = getWebAudioNode(context, tempoProcessor);
+  const node = new AudioWorkletNode(context, 'soundtouch-processor');
+  node.port.onmessage = (e) => {
+    if (e.data.type === 'position') {
+      currentSourcePosition = e.data.position;
+    }
+  };
+  const channels = [];
+  for (let i = 0; i < buffer.numberOfChannels; i++) {
+    channels.push(buffer.getChannelData(i).slice());
+  }
+  node.port.postMessage({
+    type: 'init',
+    channels,
+    tempo: tempoControl.value / 100,
+    pitch: Math.pow(2, pitchControl.value / 12),
+    startPosition: Math.floor(startTime * buffer.sampleRate)
+  });
+  filterNode = node;
   wavesurfer.backend.setFilter(filterNode);
 }
 
 // Region creation for loop
-wavesurfer.on('ready', () => {
+wavesurfer.on('ready', async () => {
   // Create filter chain when audio is decoded
-  createSoundTouchFilter(0);
+  await createSoundTouchFilter(0);
 
   // Clear previous region
   wavesurfer.clearRegions();
@@ -123,16 +143,16 @@ function startSync() {
   const buffer = wavesurfer.backend.buffer;
   const sampleRate = buffer.sampleRate;
   const duration = wavesurfer.getDuration();
-  const step = () => {
+  const step = async () => {
     if (!wavesurfer.isPlaying()) return;
-    let current = tempoProcessor
-      ? tempoProcessor.sourcePosition / sampleRate
+    let current = filterNode
+      ? currentSourcePosition / sampleRate
       : wavesurfer.getCurrentTime();
 
     if (looping && currentRegion) {
       const { start, end } = currentRegion;
       if (current >= end) {
-        createSoundTouchFilter(start);
+        await createSoundTouchFilter(start);
         wavesurfer.seekTo(start / duration);
         current = start;
       }
@@ -151,7 +171,7 @@ function stopSync() {
 
 // Use soundtouch for playback and begin sync loop
 wavesurfer.on('play', () => {
-  if (tempoProcessor) {
+  if (filterNode) {
     wavesurfer.backend.setFilter(filterNode);
   }
   startSync();
