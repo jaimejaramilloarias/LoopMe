@@ -103,6 +103,20 @@ wavesurfer.on('ready', () => {
 // Loop playback
 wavesurfer.on('region-out', (region) => {
   if (looping && region.id === currentRegion.id) {
+    // Reset filter processing for the new loop cycle
+    const startSample = Math.floor(region.start * wavesurfer.backend.buffer.sampleRate);
+    if (tempoProcessor && source) {
+      // Reset positions so SoundTouch processes from the loop start
+      source.position = startSample;
+      tempoProcessor.sourcePosition = startSample;
+      tempoProcessor.position = 0;
+      tempoProcessor.clear();
+    }
+
+    // Reconnect filter node to restart ScriptProcessorNode
+    wavesurfer.backend.setFilter();
+    wavesurfer.backend.setFilter(filterNode);
+
     region.play();
   }
 });
