@@ -70,8 +70,13 @@ class SoundTouchProcessor extends AudioWorkletProcessor {
     }
     const extracted = this.filter.extract(this.samples, frames);
     for (let i = 0; i < frames; i++) {
-      left[i] = this.samples[i * 2];
-      right[i] = this.samples[i * 2 + 1];
+      if (i < extracted) {
+        left[i] = this.samples[i * 2];
+        right[i] = this.samples[i * 2 + 1];
+      } else {
+        left[i] = 0;
+        right[i] = 0;
+      }
     }
     if (extracted === 0) {
       this.filter.onEnd();

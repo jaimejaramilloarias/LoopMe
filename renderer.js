@@ -44,9 +44,12 @@ async function ensureWorklet(context) {
     alert("AudioWorklet no soportado en este navegador.");
     return false;
   }
+
   if (!workletLoaded) {
+    // Ruta absoluta al procesador para evitar problemas al usar file:// en Electron
+    const moduleUrl = new URL('./soundtouch-processor.js', import.meta.url);
     try {
-      await context.audioWorklet.addModule("soundtouch-processor.js");
+      await context.audioWorklet.addModule(moduleUrl.href);
       workletLoaded = true;
     } catch (e) {
       console.error(e);
@@ -54,6 +57,7 @@ async function ensureWorklet(context) {
       return false;
     }
   }
+
   return true;
 }
 
