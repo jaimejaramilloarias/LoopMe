@@ -1,6 +1,8 @@
 // Migrated to AudioWorkletNode for SoundTouch processing
 // Basic LoopMe logic using Wavesurfer.js and SoundTouch library
 // Procesamiento de audio a traves de AudioWorklet para tempo y pitch
+import { SoundTouch } from './soundtouch.js';
+
 let wavesurfer = WaveSurfer.create({
   container: '#waveform',
   waveColor: '#a0a0a0',
@@ -24,9 +26,14 @@ let transientPoints = [];
 const snapThreshold = 0.05; // 50ms
 // Compensación dinámica para el desfase de procesado de SoundTouch
 // La latencia interna del algoritmo se aproxima a historyBufferSize + inputBufferSize
-// Ajuste fijo de latencia (~100ms) observado en SoundTouch
+// Se calcula segun el tempo y el pitch actuales para compensar de forma dinamica
 function computeLatency(sampleRate) {
-  return 0.1;
+  const st = new SoundTouch();
+  st.tempo = tempoControl.value / 100;
+  st.pitch = Math.pow(2, pitchControl.value / 12);
+  const historyFrames = 22050; // valor usado internamente en SimpleFilter
+  const inputFrames = st.stretch.inputChunkSize;
+  return (historyFrames + inputFrames) / sampleRate;
 }
 
 let hasInteracted = false;
@@ -214,6 +221,13 @@ tempoControl.addEventListener('input', () => {
   updateTempoDisplay();
 });
 
+tempoControl.addEventListener('change', async () => {
+  if (wavesurfer.isPlaying()) {
+    const end = looping && currentRegion ? currentRegion.end : null;
+    await createSoundTouchFilter(wavesurfer.getCurrentTime(), end);
+  }
+});
+
 // Pitch control using soundtouch
 const pitchControl = document.getElementById('pitch');
 const pitchValue = document.getElementById('pitch-val');
@@ -226,6 +240,13 @@ pitchControl.addEventListener('input', () => {
     });
   }
   updatePitchDisplay();
+});
+
+pitchControl.addEventListener('change', async () => {
+  if (wavesurfer.isPlaying()) {
+    const end = looping && currentRegion ? currentRegion.end : null;
+    await createSoundTouchFilter(wavesurfer.getCurrentTime(), end);
+  }
 });
 
 // Zoom control slider
