@@ -24,10 +24,9 @@ let transientPoints = [];
 const snapThreshold = 0.05; // 50ms
 // Compensación dinámica para el desfase de procesado de SoundTouch
 // La latencia interna del algoritmo se aproxima a historyBufferSize + inputBufferSize
+// Ajuste fijo de latencia (~100ms) observado en SoundTouch
 function computeLatency(sampleRate) {
-  const historyFrames = 22050; // tamaño del búfer interno de la librería
-  const inputFrames = 8192 * 2; // marcos requeridos antes de producir salida
-  return (historyFrames + inputFrames) / sampleRate;
+  return 0.1;
 }
 
 let hasInteracted = false;
@@ -106,7 +105,7 @@ function detectTransients(buffer) {
     }
   }
   const maxAmp = Math.max(...peaks.map(p => p.amp));
-  const threshold = maxAmp * 0.6;
+  const threshold = maxAmp * 0.3; // umbral reducido para marcar más ataques
   return peaks.filter(p => p.amp >= threshold).map(p => p.time);
 }
 
