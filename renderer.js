@@ -16,12 +16,10 @@ let looping = false;
 let filterNode = null;
 let workletLoaded = false;
 let currentSourcePosition = 0;
-// Latencia estimada en samples que introduce el procesamiento SoundTouch
-const PROCESS_LATENCY_SAMPLES = 4096;
 // Nivel de zoom en px por segundo aplicado a la onda
 let zoomLevel = 100;
-// Compensación del loop en segundos para el reinicio
-const compensacionLoop = 0.1; // editar para ajustar el retraso
+// Compensación del loop en segundos para el reinicio (ajustable)
+let compensacionLoop = 0.1; // editar para ajustar el retraso
 
 let pendingSeek = false; // evita múltiples saltos consecutivos
 
@@ -280,22 +278,16 @@ function startSync() {
   const buffer = wavesurfer.backend.buffer;
   const sampleRate = buffer.sampleRate;
   const duration = wavesurfer.getDuration();
-  const latencyTime = PROCESS_LATENCY_SAMPLES / sampleRate;
   loopHandler = async (time) => {
     let current = filterNode ? currentSourcePosition / sampleRate : time;
     if (looping && currentRegion) {
       const { start, end } = currentRegion;
-      // Compensación aplicada al momento de reinicio del loop
-      if (!pendingSeek && current >= end + compensacionLoop - latencyTime) { // <- compensación aplicada
+      if (!pendingSeek && current >= end + compensacionLoop) {
         pendingSeek = true;
-        const triggerTime = current;
-        const delay = Math.max(0, end + compensacionLoop - triggerTime);
-        setTimeout(async () => {
-          await createSoundTouchFilter(start);
-          wavesurfer.seekTo(start / duration);
-          console.log(`Loop jump at ${triggerTime.toFixed(3)}s with offset ${compensacionLoop}s`);
-          pendingSeek = false;
-        }, delay * 1000);
+        await createSoundTouchFilter(start);
+        wavesurfer.seekTo(start / duration);
+        console.log(`Loop jump at ${current.toFixed(3)}s using compensacionLoop=${compensacionLoop}s`);
+        pendingSeek = false;
       }
     }
 
