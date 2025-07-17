@@ -1,4 +1,4 @@
-import { SoundTouch, SimpleFilter } from "./soundtouch.js";
+import { SoundTouch, SimpleFilter, WebAudioBufferSource, getWebAudioNode } from "./soundtouch.js";
 // Basic LoopMe logic using Wavesurfer.js and SoundTouch library
 let wavesurfer = WaveSurfer.create({
   container: '#waveform',
@@ -11,12 +11,21 @@ let wavesurfer = WaveSurfer.create({
 
 let currentRegion = null;
 let looping = false;
+let filterNode = null;
+
+function resumeContext() {
+  const ctx = wavesurfer.backend.getAudioContext();
+  if (ctx.state === 'suspended') {
+    ctx.resume();
+  }
+}
 
 // Load local file
 const fileInput = document.getElementById('audio-upload');
 fileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (file) {
+    resumeContext();
     const url = URL.createObjectURL(file);
     wavesurfer.load(url);
     wavesurfer.once('decode', () => URL.revokeObjectURL(url));
@@ -26,6 +35,7 @@ fileInput.addEventListener('change', (e) => {
 // Play/pause
 const playBtn = document.getElementById('play-btn');
 playBtn.addEventListener('click', () => {
+  resumeContext();
   wavesurfer.playPause();
 });
 
@@ -66,18 +76,12 @@ wavesurfer.on('ready', () => {
   // Setup soundtouch when audio ready
   const context = wavesurfer.backend.getAudioContext();
   const buffer = wavesurfer.backend.buffer;
-  source = { extract: (target, numFrames, position) => {
-      const l = buffer.getChannelData(0).slice(position, position + numFrames);
-      const r = buffer.numberOfChannels > 1 ? buffer.getChannelData(1).slice(position, position + numFrames) : l;
-      target.getChannelData(0).set(l);
-      if (target.numberOfChannels > 1) target.getChannelData(1).set(r);
-      return Math.min(numFrames, buffer.length - position);
-    }
-  };
+  source = new WebAudioBufferSource(buffer);
   soundtouch = new SoundTouch(context.sampleRate);
   soundtouch.tempo = tempoControl.value / 100;
   soundtouch.pitch = Math.pow(2, pitchControl.value / 12);
   tempoProcessor = new SimpleFilter(source, soundtouch);
+  filterNode = getWebAudioNode(context, tempoProcessor);
 
   // Clear previous region
   wavesurfer.clearRegions();
@@ -101,7 +105,7 @@ wavesurfer.on('region-out', (region) => {
 // Use soundtouch for playback
 wavesurfer.on('play', () => {
   if (!tempoProcessor) return;
-  wavesurfer.backend.setFilter(tempoProcessor);
+  wavesurfer.backend.setFilter(filterNode);
 });
 
 wavesurfer.on('pause', () => {
