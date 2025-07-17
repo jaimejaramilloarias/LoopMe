@@ -113,11 +113,32 @@ pitchControl.addEventListener('input', () => {
   }
 });
 
-// Zoom control slider para acercar o alejar la onda
+// Zoom control slider y botones de zoom in/out
 const zoomControl = document.getElementById('zoom');
-zoomControl.addEventListener('input', () => {
-  zoomLevel = Number(zoomControl.value);
+const zoomInBtn = document.getElementById('zoom-in');
+const zoomOutBtn = document.getElementById('zoom-out');
+
+// Cambia el nivel de zoom aplicando .zoom(pxPerSec)
+function applyZoom(value) {
+  zoomLevel = value;
   wavesurfer.zoom(zoomLevel);
+  zoomControl.value = zoomLevel;
+}
+
+zoomControl.addEventListener('input', () => {
+  applyZoom(Number(zoomControl.value));
+});
+
+zoomInBtn.addEventListener('click', () => {
+  const step = 20;
+  const max = Number(zoomControl.max);
+  applyZoom(Math.min(zoomLevel + step, max));
+});
+
+zoomOutBtn.addEventListener('click', () => {
+  const step = 20;
+  const min = Number(zoomControl.min);
+  applyZoom(Math.max(zoomLevel - step, min));
 });
 
 async function createSoundTouchFilter(startTime = 0) {
