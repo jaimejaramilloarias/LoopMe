@@ -59,8 +59,3 @@ input[type=range] {
   margin-top: 0.5rem;
 }
 
-/* Tamaño del cuadro de compensación de loop */
-input#loop-offset {
-  width: 80px;
-  margin-top: 0.5rem;
-}
