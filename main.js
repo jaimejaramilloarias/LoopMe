@@ -17,6 +17,8 @@ let filterNode = null;
 let loopRAF = null;
 let workletLoaded = false;
 let currentSourcePosition = 0;
+// Latencia estimada en samples que introduce el procesamiento SoundTouch
+const PROCESS_LATENCY_SAMPLES = 4096;
 // Nivel de zoom en px por segundo aplicado a la onda
 let zoomLevel = 100;
 
@@ -254,9 +256,14 @@ wavesurfer.on('ready', async () => {
 // ----- Precise loop control -----
 function startSync() {
   if (loopRAF) cancelAnimationFrame(loopRAF);
+  const context = wavesurfer.backend.getAudioContext();
   const buffer = wavesurfer.backend.buffer;
   const sampleRate = buffer.sampleRate;
+  const baseLatency = context.baseLatency || 0;
+  const latencyTime = PROCESS_LATENCY_SAMPLES / sampleRate + baseLatency;
   const duration = wavesurfer.getDuration();
+  let lastPos = 0;
+  let pendingSeek = false;
   const step = async () => {
     if (!wavesurfer.isPlaying()) return;
     let current = filterNode
@@ -265,14 +272,21 @@ function startSync() {
 
     if (looping && currentRegion) {
       const { start, end } = currentRegion;
-      if (current >= end) {
+      // Programar el reinicio antes de que termine el audio real
+      if (!pendingSeek && current >= end - latencyTime) {
         await createSoundTouchFilter(start);
+        pendingSeek = true;
+      }
+      // Ajustar la posición visual justo cuando el loop reinicia
+      if (pendingSeek && current < lastPos) {
         wavesurfer.seekTo(start / duration);
+        pendingSeek = false;
         current = start;
       }
     }
 
     wavesurfer.drawer.progress(current / duration);
+    lastPos = current;
     loopRAF = requestAnimationFrame(step);
   };
   step();
