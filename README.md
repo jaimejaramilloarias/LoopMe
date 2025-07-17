@@ -1,42 +1,19 @@
 # LoopMe
 
-Aplicación web sencilla para crear loops de audio. Permite cargar archivos de audio locales, visualizar la onda, seleccionar un fragmento con marcadores y reproducirlo en bucle. Incluye controles para modificar el tempo sin alterar el pitch y para variar el pitch sin cambiar el tempo usando la librería SoundTouch. La interfaz cuenta ahora con un diseño compacto y botones de colores para un aspecto más atractivo.
+Aplicación minimalista para reproducir en bucle un fragmento de audio. Está basada en parte del código de [AudioMass](https://github.com/pkalogiros/AudioMass) para visualizar la onda y manejar regiones.
 
 ## Uso
 
-1. Inicia un servidor estático en la carpeta del proyecto. Por ejemplo, con
-   Python se puede ejecutar:
-
+1. Inicia un servidor estático en la carpeta del proyecto, por ejemplo con:
    ```bash
    python3 -m http.server
    ```
+   Luego abre `http://localhost:8000/index.html` en tu navegador.
+2. Carga un archivo de audio con el selector.
+3. Ajusta la región para definir el fragmento y pulsa **Play** para escucharlo en bucle.
 
-   Esto servirá los archivos en `http://localhost:8000/`.
+La aplicación también puede ejecutarse dentro de Electron usando `npm install` y `npm start`.
 
-2. Abre `http://localhost:8000/index.html` en un navegador moderno.
-3. Carga un archivo de audio con el selector "Choose file".
-4. Ajusta los marcadores para definir el loop y usa los controles de tempo y
-   pitch según sea necesario.
+## Licencia
 
-Si el navegador muestra un mensaje indicando que el `AudioContext` no se pudo
-iniciar, basta con hacer clic o tocar cualquier parte de la página para activar
-el sonido.
-
-El proyecto está pensado como base para un diseño de interfaz más elaborado.
-
-## Uso en escritorio (Electron)
-
-1. Instala las dependencias:
-   ```bash
-   npm install
-   ```
-2. Ejecuta la aplicación:
-   ```bash
-   npm start
-   ```
-   o bien
-   ```bash
-   npx electron .
-   ```
-
-La ventana de la aplicación cargará `index.html` y funcionará igual que en el navegador Chrome, incluyendo soporte para AudioWorklet.
+El código se distribuye bajo la licencia MIT. Consulta el proyecto original de AudioMass para más detalles.
