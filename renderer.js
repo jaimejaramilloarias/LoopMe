@@ -189,13 +189,29 @@ const zoomInBtn = document.getElementById('zoom-in');
 const zoomOutBtn = document.getElementById('zoom-out');
 // --- Ajuste temporal del reinicio del loop ------------------------------
 // Input para la compensación de loop en ms.
-// Esta UI es experimental y puede eliminarse junto con las referencias a
-// loopOffsetMs si se desea fijar un valor constante.
+// Ahora actúa únicamente como indicador visual de la diferencia real entre
+// el final del loop y el transiente anterior. Puede eliminarse junto con
+// esta lógica cuando ya no sea necesario.
 const loopOffsetInput = document.getElementById('loop-offset');
 
-loopOffsetInput.addEventListener('input', () => {
-  loopOffsetMs = parseFloat(loopOffsetInput.value) || 0;
-});
+// Calcula y muestra la distancia en ms entre el final de la región actual y
+// el marcador de transiente inmediatamente anterior. No altera el comportamiento
+// del loop, sirve solo de referencia temporal.
+function updateLoopOffsetDisplay() {
+  if (!currentRegion) return;
+  const end = currentRegion.end;
+  // Encuentra el último transiente a la izquierda del final de la región
+  let lastSnap = 0;
+  for (const t of transientPoints) {
+    if (t <= end) {
+      lastSnap = t;
+    } else {
+      break;
+    }
+  }
+  const diffMs = (end - lastSnap) * 1000;
+  loopOffsetInput.value = diffMs.toFixed(2);
+}
 
 // Cambia el nivel de zoom aplicando .zoom(pxPerSec)
 function applyZoom(value) {
@@ -273,6 +289,9 @@ wavesurfer.on('ready', async () => {
     loop: true
   });
 
+  // Mostrar la compensación inicial respecto al transiente previo
+  updateLoopOffsetDisplay();
+
   // Aplicar el nivel de zoom actual al cargar
   wavesurfer.zoom(zoomLevel);
   zoomControl.value = zoomLevel;
@@ -337,4 +356,7 @@ wavesurfer.on('region-update-end', (region) => {
   const start = snapToTransient(region.start);
   const end = snapToTransient(region.end);
   region.update({ start, end });
+  // Actualiza la visualización de la diferencia de loop cada vez que el
+  // usuario mueva el marcador final de la región.
+  updateLoopOffsetDisplay();
 });
