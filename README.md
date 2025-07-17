@@ -1,6 +1,6 @@
 # LoopMe
 
-Aplicación web sencilla para crear loops de audio. Permite cargar archivos de audio locales, visualizar la onda, seleccionar un fragmento con marcadores y reproducirlo en bucle. Incluye controles para modificar el tempo sin alterar el pitch y para variar el pitch sin cambiar el tempo usando la librería SoundTouch.
+Aplicación web sencilla para crear loops de audio. Permite cargar archivos de audio locales, visualizar la onda, seleccionar un fragmento con marcadores y reproducirlo en bucle. Incluye controles para modificar el tempo sin alterar el pitch y para variar el pitch sin cambiar el tempo usando la librería SoundTouch. La interfaz cuenta ahora con un diseño compacto y botones de colores para un aspecto más atractivo.
 
 ## Uso
 
