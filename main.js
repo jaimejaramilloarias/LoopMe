@@ -14,7 +14,6 @@ let wavesurfer = WaveSurfer.create({
 let currentRegion = null;
 let looping = false;
 let filterNode = null;
-let loopRAF = null;
 let workletLoaded = false;
 let currentSourcePosition = 0;
 // Latencia estimada en samples que introduce el procesamiento SoundTouch
@@ -253,48 +252,42 @@ wavesurfer.on('ready', async () => {
   zoomControl.value = zoomLevel;
 });
 
-// ----- Precise loop control -----
+// ----- Precise loop control using the audioprocess event -----
+let loopHandler = null; // reference to the current audioprocess callback
+
 function startSync() {
-  if (loopRAF) cancelAnimationFrame(loopRAF);
+  stopSync();
   const context = wavesurfer.backend.getAudioContext();
   const buffer = wavesurfer.backend.buffer;
   const sampleRate = buffer.sampleRate;
   const baseLatency = context.baseLatency || 0;
   const latencyTime = PROCESS_LATENCY_SAMPLES / sampleRate + baseLatency;
   const duration = wavesurfer.getDuration();
-  let lastPos = 0;
-  let pendingSeek = false;
-  const step = async () => {
-    if (!wavesurfer.isPlaying()) return;
-    let current = filterNode
-      ? currentSourcePosition / sampleRate
-      : wavesurfer.getCurrentTime();
+
+  loopHandler = async (time) => {
+    let current = filterNode ? currentSourcePosition / sampleRate : time;
 
     if (looping && currentRegion) {
       const { start, end } = currentRegion;
-      // Programar el reinicio antes de que termine el audio real
-      if (!pendingSeek && current >= end - latencyTime) {
+      // Reiniciar justo antes de terminar el loop teniendo en cuenta la latencia
+      if (current >= end - latencyTime) {
         await createSoundTouchFilter(start);
-        pendingSeek = true;
-      }
-      // Ajustar la posición visual justo cuando el loop reinicia
-      if (pendingSeek && current < lastPos) {
-        wavesurfer.seekTo(start / duration);
-        pendingSeek = false;
+        wavesurfer.seekTo(start / duration); // sincroniza la vista
         current = start;
       }
     }
 
     wavesurfer.drawer.progress(current / duration);
-    lastPos = current;
-    loopRAF = requestAnimationFrame(step);
   };
-  step();
+
+  wavesurfer.on('audioprocess', loopHandler);
 }
 
 function stopSync() {
-  if (loopRAF) cancelAnimationFrame(loopRAF);
-  loopRAF = null;
+  if (loopHandler) {
+    wavesurfer.un('audioprocess', loopHandler);
+    loopHandler = null;
+  }
 }
 
 // Use soundtouch for playback and begin sync loop
