@@ -1,9 +1,11 @@
 import { SoundTouch, SimpleFilter } from './soundtouch.js';
 
 class WorkletBufferSource {
-  constructor(channels) {
+  constructor(channels, loopStart = 0, loopEnd = null, position = null) {
     this.channels = channels;
-    this._position = 0;
+    this.loopStart = loopStart;
+    this.loopEnd = loopEnd !== null ? loopEnd : channels[0].length;
+    this._position = position !== null ? position : loopStart;
   }
   get position() {
     return this._position;
@@ -14,12 +16,21 @@ class WorkletBufferSource {
   get dualChannel() {
     return this.channels.length > 1;
   }
+  setLoopPoints(start, end, position = start) {
+    this.loopStart = start;
+    this.loopEnd = end;
+    this._position = position;
+  }
   extract(target, numFrames = 0, position = 0) {
     this._position = position;
     const left = this.channels[0];
     const right = this.dualChannel ? this.channels[1] : left;
+    const loopLen = this.loopEnd - this.loopStart;
     for (let i = 0; i < numFrames; i++) {
-      const idx = i + position;
+      let idx = position + i;
+      if (idx >= this.loopEnd) {
+        idx = this.loopStart + ((idx - this.loopStart) % loopLen);
+      }
       if (idx < left.length) {
         target[i * 2] = left[idx];
         target[i * 2 + 1] = right[idx];
@@ -28,7 +39,8 @@ class WorkletBufferSource {
         target[i * 2 + 1] = 0;
       }
     }
-    return Math.min(numFrames, left.length - position);
+    this._position = this.loopStart + (((position + numFrames) - this.loopStart) % loopLen);
+    return numFrames;
   }
 }
 
@@ -43,15 +55,15 @@ class SoundTouchProcessor extends AudioWorkletProcessor {
   handleMessage(event) {
     const data = event.data;
     if (data.type === 'init') {
-      const { channels, tempo, pitch, startPosition } = data;
-      const source = new WorkletBufferSource(channels);
+      const { channels, tempo, pitch, position, loopStart, loopEnd } = data;
+      const source = new WorkletBufferSource(channels, loopStart, loopEnd, position);
       const st = new SoundTouch(sampleRate);
       st.tempo = tempo;
       st.pitch = pitch;
       this.filter = new SimpleFilter(source, st, () => {
         this.port.postMessage({ type: 'ended' });
       });
-      this.filter.sourcePosition = startPosition;
+      this.filter.sourcePosition = position;
       this.filter.position = 0;
     } else if (data.type === 'params' && this.filter) {
       if (typeof data.tempo === 'number') this.filter._pipe.tempo = data.tempo;
@@ -81,7 +93,8 @@ class SoundTouchProcessor extends AudioWorkletProcessor {
     if (extracted === 0) {
       this.filter.onEnd();
     }
-    this.port.postMessage({ type: 'position', position: this.filter.sourcePosition });
+    const pos = this.filter.sourceSound.position;
+    this.port.postMessage({ type: 'position', position: pos });
     return true;
   }
 }
