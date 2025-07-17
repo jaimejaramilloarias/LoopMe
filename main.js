@@ -20,6 +20,10 @@ function resumeContext() {
   }
 }
 
+// ensure the AudioContext resumes on the first user interaction
+document.addEventListener('click', resumeContext, { once: true });
+document.addEventListener('keydown', resumeContext, { once: true });
+
 // Load local file
 const fileInput = document.getElementById('audio-upload');
 fileInput.addEventListener('change', (e) => {
@@ -109,5 +113,6 @@ wavesurfer.on('play', () => {
 });
 
 wavesurfer.on('pause', () => {
-  wavesurfer.backend.setFilter(null);
+  // Clear filters by calling setFilter with no arguments
+  wavesurfer.backend.setFilter();
 });
