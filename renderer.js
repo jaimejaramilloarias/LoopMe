@@ -20,6 +20,8 @@ let currentSourcePosition = 0;
 const PROCESS_LATENCY_SAMPLES = 4096;
 // Nivel de zoom en px por segundo aplicado a la onda
 let zoomLevel = 100;
+// Valor de compensación de loop en milisegundos
+let loopOffsetMs = 0;
 
 // Lista de tiempos de ataque detectados en el audio
 let transientPoints = [];
@@ -174,6 +176,13 @@ pitchControl.addEventListener('input', () => {
 const zoomControl = document.getElementById('zoom');
 const zoomInBtn = document.getElementById('zoom-in');
 const zoomOutBtn = document.getElementById('zoom-out');
+// Input para la compensación de loop en ms (se puede eliminar junto con las
+// referencias si se quiere dejar un valor fijo)
+const loopOffsetInput = document.getElementById('loop-offset');
+
+loopOffsetInput.addEventListener('input', () => {
+  loopOffsetMs = parseFloat(loopOffsetInput.value) || 0;
+});
 
 // Cambia el nivel de zoom aplicando .zoom(pxPerSec)
 function applyZoom(value) {
@@ -267,14 +276,16 @@ function startSync() {
   const baseLatency = context.baseLatency || 0;
   const latencyTime = PROCESS_LATENCY_SAMPLES / sampleRate + baseLatency;
   const duration = wavesurfer.getDuration();
+  const offsetTime = loopOffsetMs / 1000; // compensación en segundos
 
   loopHandler = async (time) => {
     let current = filterNode ? currentSourcePosition / sampleRate : time;
 
     if (looping && currentRegion) {
       const { start, end } = currentRegion;
-      // Reiniciar justo antes de terminar el loop teniendo en cuenta la latencia
-      if (current >= end - latencyTime) {
+      // Reiniciar cerca del final del loop sumando la compensación
+      // (ajustar o eliminar este bloque si se desea fijar el valor)
+      if (current >= end + offsetTime - latencyTime) {
         await createSoundTouchFilter(start);
         wavesurfer.seekTo(start / duration); // sincroniza la vista
         current = start;
