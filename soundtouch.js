@@ -640,6 +640,19 @@ class SoundTouch {
       this.stretch.process();
     }
   }
+
+  /**
+   * Update tempo and pitch parameters at once. Any undefined value
+   * keeps the current one. Useful for real-time adjustments.
+   */
+  updateParams({ tempo, pitch } = {}) {
+    if (typeof tempo === 'number') {
+      this.tempo = tempo;
+    }
+    if (typeof pitch === 'number') {
+      this.pitch = pitch;
+    }
+  }
 }
 
 class WebAudioBufferSource {
