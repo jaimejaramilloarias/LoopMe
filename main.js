@@ -1,5 +1,7 @@
 import { SoundTouch, SimpleFilter, WebAudioBufferSource, getWebAudioNode } from "./soundtouch.js";
 // Basic LoopMe logic using Wavesurfer.js and SoundTouch library
+// Nota: SoundTouch aún utiliza ScriptProcessorNode, que está deprecado en
+// navegadores modernos. En un futuro se debería migrar a AudioWorkletNode.
 let wavesurfer = WaveSurfer.create({
   container: '#waveform',
   waveColor: '#a0a0a0',
@@ -41,7 +43,12 @@ fileInput.addEventListener('change', (e) => {
 const playBtn = document.getElementById('play-btn');
 playBtn.addEventListener('click', () => {
   resumeContext();
-  wavesurfer.playPause();
+  if (wavesurfer.isPlaying()) {
+    wavesurfer.pause();
+  } else {
+    createSoundTouchFilter(wavesurfer.getCurrentTime());
+    wavesurfer.play();
+  }
 });
 
 // Toggle looping region
@@ -76,17 +83,24 @@ pitchControl.addEventListener('input', () => {
   soundtouch.pitch = Math.pow(2, semitones / 12);
 });
 
-// Region creation for loop
-wavesurfer.on('ready', () => {
-  // Setup soundtouch when audio ready
+function createSoundTouchFilter(startTime = 0) {
   const context = wavesurfer.backend.getAudioContext();
   const buffer = wavesurfer.backend.buffer;
   source = new WebAudioBufferSource(buffer);
+  source.position = Math.floor(startTime * buffer.sampleRate);
   soundtouch = new SoundTouch(context.sampleRate);
   soundtouch.tempo = tempoControl.value / 100;
   soundtouch.pitch = Math.pow(2, pitchControl.value / 12);
   tempoProcessor = new SimpleFilter(source, soundtouch);
+  // Recreate ScriptProcessorNode every cycle for a clean state
   filterNode = getWebAudioNode(context, tempoProcessor);
+  wavesurfer.backend.setFilter(filterNode);
+}
+
+// Region creation for loop
+wavesurfer.on('ready', () => {
+  // Create filter chain when audio is decoded
+  createSoundTouchFilter(0);
 
   // Clear previous region
   wavesurfer.clearRegions();
@@ -103,20 +117,8 @@ wavesurfer.on('ready', () => {
 // Loop playback
 wavesurfer.on('region-out', (region) => {
   if (looping && region.id === currentRegion.id) {
-    // Reset filter processing for the new loop cycle
-    const startSample = Math.floor(region.start * wavesurfer.backend.buffer.sampleRate);
-    if (tempoProcessor && source) {
-      // Reset positions so SoundTouch processes from the loop start
-      source.position = startSample;
-      tempoProcessor.sourcePosition = startSample;
-      tempoProcessor.position = 0;
-      tempoProcessor.clear();
-    }
-
-    // Reconnect filter node to restart ScriptProcessorNode
-    wavesurfer.backend.setFilter();
-    wavesurfer.backend.setFilter(filterNode);
-
+    // Recreate filter chain for the new loop cycle
+    createSoundTouchFilter(region.start);
     region.play();
   }
 });
@@ -125,6 +127,12 @@ wavesurfer.on('region-out', (region) => {
 wavesurfer.on('play', () => {
   if (!tempoProcessor) return;
   wavesurfer.backend.setFilter(filterNode);
+});
+
+// Keep playhead in sync even when looping through SoundTouch
+wavesurfer.on('audioprocess', () => {
+  const progress = wavesurfer.getCurrentTime() / wavesurfer.getDuration();
+  wavesurfer.drawer.progress(progress);
 });
 
 wavesurfer.on('pause', () => {
