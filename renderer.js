@@ -277,8 +277,6 @@ function startSync() {
   const context = wavesurfer.backend.getAudioContext();
   const buffer = wavesurfer.backend.buffer;
   const sampleRate = buffer.sampleRate;
-  const baseLatency = context.baseLatency || 0;
-  const latencyTime = PROCESS_LATENCY_SAMPLES / sampleRate + baseLatency;
   const duration = wavesurfer.getDuration();
   loopHandler = async (time) => {
     let current = filterNode ? currentSourcePosition / sampleRate : time;
@@ -287,8 +285,8 @@ function startSync() {
 
     if (looping && currentRegion) {
       const { start, end } = currentRegion;
-      // Reiniciar cerca del final del loop sumando la compensación fija
-      if (current >= end + offsetTime - latencyTime) {
+      // Reiniciar cuando la reproducción sobrepasa el final más la compensación
+      if (current >= end + offsetTime) { // compara current con end + offsetTime
         await createSoundTouchFilter(start);
         wavesurfer.seekTo(start / duration); // sincroniza la vista
         current = start;
