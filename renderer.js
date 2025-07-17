@@ -85,7 +85,7 @@ function detectTransients(buffer) {
   for (let i = 1; i < rms.length; i++) {
     diff.push(Math.max(0, rms[i] - rms[i - 1]));
   }
-  const times = [];
+  const peaks = [];
   const searchRadius = 2; // frames around the transient to find the real peak
   for (let i = 1; i < diff.length - 1; i++) {
     if (diff[i] >= diff[i - 1] && diff[i] >= diff[i + 1]) {
@@ -99,10 +99,15 @@ function detectTransients(buffer) {
           peakIndex = idx;
         }
       }
-      times.push((peakIndex * hopSize) / sampleRate);
+      peaks.push({
+        time: (peakIndex * hopSize) / sampleRate,
+        amp: peakValue
+      });
     }
   }
-  return times;
+  const maxAmp = Math.max(...peaks.map(p => p.amp));
+  const threshold = maxAmp * 0.6;
+  return peaks.filter(p => p.amp >= threshold).map(p => p.time);
 }
 
 // Devuelve el tiempo de transiente más cercano si está dentro del umbral
@@ -224,10 +229,8 @@ pitchControl.addEventListener('input', () => {
   updatePitchDisplay();
 });
 
-// Zoom control slider y botones de zoom in/out
+// Zoom control slider
 const zoomControl = document.getElementById('zoom');
-const zoomInBtn = document.getElementById('zoom-in');
-const zoomOutBtn = document.getElementById('zoom-out');
 
 // Initialize knob displays
 updateTempoDisplay();
@@ -268,19 +271,6 @@ zoomControl.addEventListener('input', () => {
   updateZoomDisplay();
 });
 
-zoomInBtn.addEventListener('click', () => {
-  const step = 20;
-  const max = Number(zoomControl.max);
-  applyZoom(Math.min(zoomLevel + step, max));
-  updateZoomDisplay();
-});
-
-zoomOutBtn.addEventListener('click', () => {
-  const step = 20;
-  const min = Number(zoomControl.min);
-  applyZoom(Math.max(zoomLevel - step, min));
-  updateZoomDisplay();
-});
 
 async function createSoundTouchFilter(startTime = 0, endTime = null) {
   const context = wavesurfer.backend.getAudioContext();
