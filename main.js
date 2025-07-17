@@ -5,7 +5,7 @@ let wavesurfer = WaveSurfer.create({
   waveColor: '#a0a0a0',
   progressColor: '#333',
   plugins: [
-    WaveSurfer.regions.create({})
+    WaveSurfer.Regions.create({})
   ]
 });
 
