@@ -22,8 +22,13 @@ let zoomLevel = 100;
 let transientPoints = [];
 // Umbral en segundos para "magnetizar" los límites del loop
 const snapThreshold = 0.05; // 50ms
-// Compensación para ajustar el desfase de procesado de SoundTouch
-const LATENCY_COMPENSATION = 0.1; // 100ms
+// Compensación dinámica para el desfase de procesado de SoundTouch
+// La latencia interna del algoritmo se aproxima a historyBufferSize + inputBufferSize
+function computeLatency(sampleRate) {
+  const historyFrames = 22050; // tamaño del búfer interno de la librería
+  const inputFrames = 8192 * 2; // marcos requeridos antes de producir salida
+  return (historyFrames + inputFrames) / sampleRate;
+}
 
 let hasInteracted = false;
 
@@ -225,13 +230,14 @@ async function createSoundTouchFilter(startTime = 0, endTime = null) {
   for (let i = 0; i < buffer.numberOfChannels; i++) {
     channels.push(buffer.getChannelData(i).slice());
   }
-  const offset = Math.round(LATENCY_COMPENSATION * buffer.sampleRate);
+  const latency = computeLatency(buffer.sampleRate);
+  const offset = Math.round(latency * buffer.sampleRate);
   const startFrame = Math.max(0, Math.floor(startTime * buffer.sampleRate) - offset);
   const loopStartFrame = looping && currentRegion
     ? Math.max(0, Math.floor(currentRegion.start * buffer.sampleRate) - offset)
     : 0;
   let loopEndFrame = endTime !== null
-    ? Math.floor((endTime + LATENCY_COMPENSATION) * buffer.sampleRate)
+    ? Math.floor((endTime + latency) * buffer.sampleRate)
     : buffer.length;
   loopEndFrame = Math.min(loopEndFrame, buffer.length);
 
