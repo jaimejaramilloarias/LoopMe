@@ -19,6 +19,7 @@ fileInput.addEventListener('change', (e) => {
   if (file) {
     const url = URL.createObjectURL(file);
     wavesurfer.load(url);
+    wavesurfer.once('decode', () => URL.revokeObjectURL(url));
   }
 });
 
@@ -30,8 +31,13 @@ playBtn.addEventListener('click', () => {
 
 // Toggle looping region
 const loopBtn = document.getElementById('loop-btn');
+loopBtn.textContent = 'Loop Off';
 loopBtn.addEventListener('click', () => {
   looping = !looping;
+  loopBtn.textContent = looping ? 'Loop On' : 'Loop Off';
+  if (currentRegion) {
+    currentRegion.update({ loop: looping });
+  }
 });
 
 // Playback rate control (tempo without pitch change)
@@ -81,7 +87,7 @@ wavesurfer.on('ready', () => {
     end: Math.min(5, duration),
     drag: true,
     resize: true,
-    loop: false
+    loop: looping
   });
 });
 
