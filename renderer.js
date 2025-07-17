@@ -282,13 +282,17 @@ function startSync() {
     let current = filterNode ? currentSourcePosition / sampleRate : time;
     if (looping && currentRegion) {
       const { start, end } = currentRegion;
-      if (!pendingSeek && current >= end + compensacionLoop) {
-        pendingSeek = true;
-        await createSoundTouchFilter(start);
-        wavesurfer.seekTo(start / duration);
-        console.log(`Loop jump at ${current.toFixed(3)}s using compensacionLoop=${compensacionLoop}s`);
-        pendingSeek = false;
-      }
+        if (!pendingSeek && current >= end + compensacionLoop) {
+          pendingSeek = true;
+          await createSoundTouchFilter(start);
+          wavesurfer.seekTo(start / duration);
+          wavesurfer.pause(); // flush
+          setTimeout(() => {
+            wavesurfer.play();
+            pendingSeek = false;
+          }, 10);
+          console.log(`Loop jump at ${current.toFixed(3)}s using compensacionLoop=${compensacionLoop}s`);
+        }
     }
 
     wavesurfer.drawer.progress(current / duration);
