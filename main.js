@@ -16,6 +16,8 @@ let filterNode = null;
 let loopRAF = null;
 let workletLoaded = false;
 let currentSourcePosition = 0;
+// Nivel de zoom en px por segundo aplicado a la onda
+let zoomLevel = 100;
 
 let hasInteracted = false;
 
@@ -111,6 +113,13 @@ pitchControl.addEventListener('input', () => {
   }
 });
 
+// Zoom control slider para acercar o alejar la onda
+const zoomControl = document.getElementById('zoom');
+zoomControl.addEventListener('input', () => {
+  zoomLevel = Number(zoomControl.value);
+  wavesurfer.zoom(zoomLevel);
+});
+
 async function createSoundTouchFilter(startTime = 0) {
   const context = wavesurfer.backend.getAudioContext();
   const ok = await ensureWorklet(context);
@@ -145,13 +154,20 @@ wavesurfer.on('ready', async () => {
   // Clear previous region
   wavesurfer.clearRegions();
   const duration = wavesurfer.getDuration();
+  // Activar loop en toda la duración del audio por defecto
+  looping = true;
+  loopBtn.textContent = 'Loop On';
   currentRegion = wavesurfer.addRegion({
     start: 0,
-    end: Math.min(5, duration),
+    end: duration,
     drag: true,
     resize: true,
-    loop: looping
+    loop: true
   });
+
+  // Aplicar el nivel de zoom actual al cargar
+  wavesurfer.zoom(zoomLevel);
+  zoomControl.value = zoomLevel;
 });
 
 // ----- Precise loop control -----
