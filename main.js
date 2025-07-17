@@ -14,6 +14,7 @@ let wavesurfer = WaveSurfer.create({
 let currentRegion = null;
 let looping = false;
 let filterNode = null;
+let loopRAF = null;
 
 function resumeContext() {
   const ctx = wavesurfer.backend.getAudioContext();
@@ -87,11 +88,13 @@ function createSoundTouchFilter(startTime = 0) {
   const context = wavesurfer.backend.getAudioContext();
   const buffer = wavesurfer.backend.buffer;
   source = new WebAudioBufferSource(buffer);
-  source.position = Math.floor(startTime * buffer.sampleRate);
   soundtouch = new SoundTouch(context.sampleRate);
   soundtouch.tempo = tempoControl.value / 100;
   soundtouch.pitch = Math.pow(2, pitchControl.value / 12);
   tempoProcessor = new SimpleFilter(source, soundtouch);
+  // posicionar con precisión el inicio del buffer y reiniciar historial
+  tempoProcessor.sourcePosition = Math.floor(startTime * buffer.sampleRate);
+  tempoProcessor.position = 0;
   // Recreate ScriptProcessorNode every cycle for a clean state
   filterNode = getWebAudioNode(context, tempoProcessor);
   wavesurfer.backend.setFilter(filterNode);
@@ -114,28 +117,47 @@ wavesurfer.on('ready', () => {
   });
 });
 
-// Loop playback
-wavesurfer.on('region-out', (region) => {
-  if (looping && region.id === currentRegion.id) {
-    // Recreate filter chain for the new loop cycle
-    createSoundTouchFilter(region.start);
-    region.play();
-  }
-});
+// ----- Precise loop control -----
+function startSync() {
+  if (loopRAF) cancelAnimationFrame(loopRAF);
+  const buffer = wavesurfer.backend.buffer;
+  const sampleRate = buffer.sampleRate;
+  const duration = wavesurfer.getDuration();
+  const step = () => {
+    if (!wavesurfer.isPlaying()) return;
+    let current = tempoProcessor
+      ? tempoProcessor.sourcePosition / sampleRate
+      : wavesurfer.getCurrentTime();
 
-// Use soundtouch for playback
+    if (looping && currentRegion) {
+      const { start, end } = currentRegion;
+      if (current >= end) {
+        createSoundTouchFilter(start);
+        wavesurfer.seekTo(start / duration);
+        current = start;
+      }
+    }
+
+    wavesurfer.drawer.progress(current / duration);
+    loopRAF = requestAnimationFrame(step);
+  };
+  step();
+}
+
+function stopSync() {
+  if (loopRAF) cancelAnimationFrame(loopRAF);
+  loopRAF = null;
+}
+
+// Use soundtouch for playback and begin sync loop
 wavesurfer.on('play', () => {
-  if (!tempoProcessor) return;
-  wavesurfer.backend.setFilter(filterNode);
-});
-
-// Keep playhead in sync even when looping through SoundTouch
-wavesurfer.on('audioprocess', () => {
-  const progress = wavesurfer.getCurrentTime() / wavesurfer.getDuration();
-  wavesurfer.drawer.progress(progress);
+  if (tempoProcessor) {
+    wavesurfer.backend.setFilter(filterNode);
+  }
+  startSync();
 });
 
 wavesurfer.on('pause', () => {
-  // Clear filters by calling setFilter with no arguments
   wavesurfer.backend.setFilter();
+  stopSync();
 });
