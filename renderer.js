@@ -20,8 +20,8 @@ let currentSourcePosition = 0;
 const PROCESS_LATENCY_SAMPLES = 4096;
 // Nivel de zoom en px por segundo aplicado a la onda
 let zoomLevel = 100;
-// Valor de compensación de loop en milisegundos
-let loopOffsetMs = 0;
+// Compensación fija para el reinicio del loop en milisegundos
+const LOOP_OFFSET_MS = 100;
 
 // Lista de tiempos de ataque detectados en el audio
 let transientPoints = [];
@@ -187,31 +187,6 @@ pitchControl.addEventListener('input', () => {
 const zoomControl = document.getElementById('zoom');
 const zoomInBtn = document.getElementById('zoom-in');
 const zoomOutBtn = document.getElementById('zoom-out');
-// --- Ajuste temporal del reinicio del loop ------------------------------
-// Input para la compensación de loop en ms.
-// Ahora actúa únicamente como indicador visual de la diferencia real entre
-// el final del loop y el transiente anterior. Puede eliminarse junto con
-// esta lógica cuando ya no sea necesario.
-const loopOffsetInput = document.getElementById('loop-offset');
-
-// Calcula y muestra la distancia en ms entre el final de la región actual y
-// el marcador de transiente inmediatamente anterior. No altera el comportamiento
-// del loop, sirve solo de referencia temporal.
-function updateLoopOffsetDisplay() {
-  if (!currentRegion) return;
-  const end = currentRegion.end;
-  // Encuentra el último transiente a la izquierda del final de la región
-  let lastSnap = 0;
-  for (const t of transientPoints) {
-    if (t <= end) {
-      lastSnap = t;
-    } else {
-      break;
-    }
-  }
-  const diffMs = (end - lastSnap) * 1000;
-  loopOffsetInput.value = diffMs.toFixed(2);
-}
 
 // Cambia el nivel de zoom aplicando .zoom(pxPerSec)
 function applyZoom(value) {
@@ -289,9 +264,6 @@ wavesurfer.on('ready', async () => {
     loop: true
   });
 
-  // Mostrar la compensación inicial respecto al transiente previo
-  updateLoopOffsetDisplay();
-
   // Aplicar el nivel de zoom actual al cargar
   wavesurfer.zoom(zoomLevel);
   zoomControl.value = zoomLevel;
@@ -310,14 +282,12 @@ function startSync() {
   const duration = wavesurfer.getDuration();
   loopHandler = async (time) => {
     let current = filterNode ? currentSourcePosition / sampleRate : time;
-    // Leer la compensación en cada iteración para aplicar cambios en tiempo real
-    // Esta lógica puede eliminarse si se descarta la UI de compensación
-    const offsetTime = loopOffsetMs / 1000;
+    // Aplica la compensación fija en cada reinicio del loop
+    const offsetTime = LOOP_OFFSET_MS / 1000; // cambiar LOOP_OFFSET_MS si es necesario
 
     if (looping && currentRegion) {
       const { start, end } = currentRegion;
-      // Reiniciar cerca del final del loop sumando la compensación
-      // (esta sección es parte de la UI experimental de ajuste de loop)
+      // Reiniciar cerca del final del loop sumando la compensación fija
       if (current >= end + offsetTime - latencyTime) {
         await createSoundTouchFilter(start);
         wavesurfer.seekTo(start / duration); // sincroniza la vista
@@ -356,7 +326,4 @@ wavesurfer.on('region-update-end', (region) => {
   const start = snapToTransient(region.start);
   const end = snapToTransient(region.end);
   region.update({ start, end });
-  // Actualiza la visualización de la diferencia de loop cada vez que el
-  // usuario mueva el marcador final de la región.
-  updateLoopOffsetDisplay();
 });
