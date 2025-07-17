@@ -41,7 +41,7 @@ function resumeContext() {
 
 async function ensureWorklet(context) {
   if (!context || !context.audioWorklet) {
-    alert("AudioWorklet no soportado en este navegador.");
+    console.warn("AudioWorklet no soportado en este navegador.");
     return false;
   }
 
