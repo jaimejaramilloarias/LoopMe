@@ -1,7 +1,7 @@
 {
   "name": "loopme",
   "version": "1.0.0",
-  "description": "Aplicación web sencilla para crear loops de audio. Permite cargar archivos de audio locales, visualizar la onda, seleccionar un fragmento con marcadores y reproducirlo en bucle. Incluye controles para modificar el tempo sin alterar el pitch y para variar el pitch sin cambiar el tempo usando la librería SoundTouch. La interfaz cuenta ahora con un diseño compacto y botones de colores para un aspecto más atractivo.",
+  "description": "Aplicación minimalista para hacer loop de un fragmento de audio",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "electron": "^37.2.3"

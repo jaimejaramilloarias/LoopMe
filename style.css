@@ -1,94 +1,14 @@
 body {
-  margin: 0;
   font-family: sans-serif;
-  color: #fff;
-  background: linear-gradient(120deg, #1e3c72, #2a5298);
-  display: flex;
-  justify-content: center;
   padding: 1rem;
-  min-height: 100vh;
-}
-
-.container {
-  width: 95%;
-  max-width: 600px;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
   text-align: center;
 }
 
 #waveform {
-  width: 100%;
-  height: 150px;
+  height: 128px;
   margin-top: 1rem;
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-#controls {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: 1rem;
-}
-
-#knobs {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
 }
 
 button {
-  background: #ffbf00;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-button:hover {
-  opacity: 0.9;
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   margin: 0.5rem;
 }
-
-input[type=range] {
-  width: 100px;
-  margin-top: 0.5rem;
-}
-
-/* Simple knob style for range inputs */
-input.knob {
-  appearance: none;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: #333;
-  position: relative;
-}
-input.knob::-webkit-slider-thumb,
-input.knob::-moz-range-thumb {
-  appearance: none;
-  width: 0;
-  height: 0;
-}
-input.knob::after {
-  content: "";
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  width: 4px;
-  height: 25px;
-  background: #ffbf00;
-  transform-origin: bottom center;
-  transform: rotate(calc(-135deg + var(--percentage, 0) * 270deg));
-}
-

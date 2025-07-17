@@ -1,44 +1,21 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LoopMe</title>
-    <link rel="icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAAAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAGAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wAAAAAA////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8AAAAAAP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AAAAAAD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wAAAAAA////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8AAAAAAP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" />
-    <link rel="stylesheet" href="style.css">
-    <!-- Wavesurfer.js v6 for compatibility with current script -->
-    <script src="https://unpkg.com/wavesurfer.js@6"></script>
-    <script src="https://unpkg.com/wavesurfer.js@6/dist/plugin/wavesurfer.regions.min.js"></script>
-    <script src="https://unpkg.com/wavesurfer.js@6/dist/plugin/wavesurfer.markers.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoopMe</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/wavesurfer.js@6"></script>
+  <script src="https://unpkg.com/wavesurfer.js@6/dist/plugin/wavesurfer.regions.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>LoopMe</h1>
-        <input type="file" id="audio-upload" accept="audio/*">
-        <div id="waveform"></div>
-        <div id="controls">
-            <button id="play-btn">Play/Pause</button>
-            <button id="stop-btn">Stop</button>
-            <button id="prev-marker">&laquo;</button>
-            <button id="next-marker">&raquo;</button>
-            <button id="loop-btn"></button>
-            <div id="knobs">
-                <div class="control-group">
-                    <label for="tempo">Tempo <span id="tempo-val">100%</span></label>
-                    <input type="range" id="tempo" class="knob" min="50" max="150" value="100">
-                </div>
-                <div class="control-group">
-                    <label for="pitch">Pitch <span id="pitch-val">0 st</span></label>
-                    <input type="range" id="pitch" class="knob" min="-12" max="12" value="0">
-                </div>
-                <div class="control-group">
-                    <label for="zoom">Zoom</label>
-                    <input type="range" id="zoom" class="knob" min="20" max="200" value="100">
-                </div>
-            </div>
-        </div>
-    </div>
-    <script type="module" src="soundtouch.js"></script>
-    <script type="module" src="renderer.js"></script>
+  <h1>LoopMe</h1>
+  <input type="file" id="file" accept="audio/*">
+  <div id="waveform"></div>
+  <div class="buttons">
+    <button id="play">Play/Pause</button>
+    <button id="toggle-loop">Toggle Loop</button>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>
